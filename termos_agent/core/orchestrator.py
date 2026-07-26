@@ -7,9 +7,11 @@ from termos_agent.core.executor import Executor
 from termos_agent.core.feedback import RunFeedback
 from termos_agent.core.memory import MemoryStore
 from termos_agent.core.planner import Planner
+from termos_agent.core.reasoning import LocalReasoningAdapter, ReasoningDecision
 from termos_agent.core.repair import RepairEngine, RepairResult
 from termos_agent.core.state import RuntimeState
 from termos_agent.core.verifier import Verifier
+from termos_agent.core.workflow_registry import WorkflowRegistry
 from termos_agent.environment.inventory import Inventory
 from termos_agent.skills.registry import SkillRegistry
 from termos_agent.testing.manifest import TestManifestLoader
@@ -31,7 +33,9 @@ class Orchestrator:
         self.verifier = Verifier()
         self.memory = MemoryStore()
         self.skills = SkillRegistry()
-        self.planner = Planner(skills=self.skills)
+        self.workflows = WorkflowRegistry()
+        self.reasoning = LocalReasoningAdapter(self.workflows)
+        self.planner = Planner(skills=self.skills, workflows=self.workflows, reasoning=self.reasoning)
         self.tester = TestingRunner()
         self.repair_engine = RepairEngine()
         self.memory.init_schema()
@@ -61,7 +65,7 @@ class Orchestrator:
                 data={"feedback": feedback.as_dict(), "environment": profile},
             )
 
-        plan = self.planner.plan(request)
+        plan = self.planner.plan(request, self.state.environment)
         feedback = RunFeedback(
             kind="task",
             name=request,
@@ -76,7 +80,10 @@ class Orchestrator:
             metadata={
                 "skill": plan.skill_name,
                 "reason": plan.reason,
+                "workflow_name": plan.workflow_name,
+                "confidence": plan.confidence,
                 "steps": [step.__dict__ for step in plan.steps],
+                "plan_metadata": plan.metadata or {},
             },
         )
         self.memory.record_feedback(feedback)
@@ -89,8 +96,39 @@ class Orchestrator:
                 "request": request,
                 "skill": plan.skill_name,
                 "reason": plan.reason,
+                "workflow_name": plan.workflow_name,
+                "confidence": plan.confidence,
                 "steps": [step.__dict__ for step in plan.steps],
             },
+        )
+
+    def reason_about_request(self, request: str) -> OrchestrationResult:
+        decision: ReasoningDecision = self.reasoning.analyze(request, self.state.environment)
+        feedback = RunFeedback(
+            kind="reasoning",
+            name=request,
+            status="llm-needed" if decision.needs_llm else "resolved",
+            environment=self.state.environment,
+            command=[],
+            stdout="",
+            stderr="",
+            exit_code=0,
+            runtime_seconds=0.0,
+            notes=decision.reason,
+            metadata={
+                "workflow_name": decision.workflow_name,
+                "skill_name": decision.skill_name,
+                "confidence": decision.confidence,
+                "needs_llm": decision.needs_llm,
+                "decision_metadata": decision.metadata,
+                "steps": decision.steps,
+            },
+        )
+        self.memory.record_feedback(feedback)
+        return OrchestrationResult(
+            success=not decision.needs_llm,
+            message=decision.reason,
+            data={"feedback": feedback.as_dict(), "decision": decision.__dict__},
         )
 
     def run_test_manifest(self, manifest_path: str) -> OrchestrationResult:
