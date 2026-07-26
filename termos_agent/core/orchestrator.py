@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
+import json
 
 from termos_agent.core.executor import Executor
+from termos_agent.core.feedback import RunFeedback
 from termos_agent.core.memory import MemoryStore
 from termos_agent.core.planner import Planner
 from termos_agent.core.state import RuntimeState
@@ -36,20 +38,52 @@ class Orchestrator:
         if request == "health-check":
             profile = self.inventory.as_dict()
             self.state.environment = profile
+            feedback = RunFeedback(
+                kind="environment",
+                name="health-check",
+                status="passed",
+                environment=profile,
+                command=[],
+                stdout=json.dumps(profile),
+                stderr="",
+                exit_code=0,
+                runtime_seconds=0.0,
+                notes="Environment profile collected.",
+            )
+            self.memory.record_feedback(feedback)
             self.memory.record_environment(str(profile))
             self.memory.record_task(request, True, "Environment profile collected.")
             return OrchestrationResult(
                 success=True,
                 message="TermOS agent is alive.",
-                data=profile,
+                data={"feedback": feedback.as_dict(), "environment": profile},
             )
 
         plan = self.planner.plan(request)
+        feedback = RunFeedback(
+            kind="task",
+            name=request,
+            status="planned" if plan.skill_name != "unknown" else "needs-action",
+            environment=self.state.environment,
+            command=[],
+            stdout="",
+            stderr="",
+            exit_code=0,
+            runtime_seconds=0.0,
+            notes=f"Planner returned {plan.skill_name}: {plan.reason}",
+            metadata={
+                "skill": plan.skill_name,
+                "reason": plan.reason,
+                "steps": [step.__dict__ for step in plan.steps],
+            },
+        )
+        self.memory.record_feedback(feedback)
         self.memory.record_task(request, False, f"Planner returned {plan.skill_name}.")
         return OrchestrationResult(
             success=False,
             message=f"Planner selected {plan.skill_name}: {plan.reason}",
             data={
+                "feedback": feedback.as_dict(),
                 "request": request,
                 "skill": plan.skill_name,
                 "reason": plan.reason,
@@ -61,6 +95,8 @@ class Orchestrator:
         path = Path(manifest_path)
         manifest = TestManifestLoader(str(path)).load()
         result = self.tester.run_manifest(manifest)
+        run_feedback = result.feedback.to_run_feedback()
+        self.memory.record_feedback(run_feedback)
         self.memory.record_test_run(
             result.feedback.test_name,
             result.feedback.status,
@@ -69,5 +105,5 @@ class Orchestrator:
         return OrchestrationResult(
             success=result.passed,
             message=f"Test {result.feedback.test_name} finished with status {result.feedback.status}.",
-            data=result.feedback.as_dict(),
+            data={"feedback": result.feedback.as_dict(), "run_feedback": run_feedback.as_dict()},
         )
