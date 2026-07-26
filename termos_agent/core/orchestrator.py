@@ -7,6 +7,7 @@ from termos_agent.core.executor import Executor
 from termos_agent.core.feedback import RunFeedback
 from termos_agent.core.memory import MemoryStore
 from termos_agent.core.planner import Planner
+from termos_agent.core.repair import RepairEngine, RepairResult
 from termos_agent.core.state import RuntimeState
 from termos_agent.core.verifier import Verifier
 from termos_agent.environment.inventory import Inventory
@@ -32,6 +33,7 @@ class Orchestrator:
         self.skills = SkillRegistry()
         self.planner = Planner(skills=self.skills)
         self.tester = TestingRunner()
+        self.repair_engine = RepairEngine()
         self.memory.init_schema()
 
     def handle(self, request: str) -> OrchestrationResult:
@@ -106,4 +108,18 @@ class Orchestrator:
             success=result.passed,
             message=f"Test {result.feedback.test_name} finished with status {result.feedback.status}.",
             data={"feedback": result.feedback.as_dict(), "run_feedback": run_feedback.as_dict()},
+        )
+
+    def diagnose_failure(self, feedback: RunFeedback) -> OrchestrationResult:
+        repair: RepairResult = self.repair_engine.analyze(feedback)
+        self.memory.record_repair(repair.feedback, repair.should_retry)
+        return OrchestrationResult(
+            success=repair.should_retry,
+            message=f"Repair classified {repair.feedback.metadata.get('category', 'unknown')}.",
+            data={
+                "feedback": repair.feedback.as_dict(),
+                "suggestions": [suggestion.__dict__ for suggestion in repair.suggestions],
+                "should_retry": repair.should_retry,
+                "auto_apply": repair.auto_apply,
+            },
         )
