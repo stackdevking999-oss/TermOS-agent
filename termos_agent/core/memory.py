@@ -48,6 +48,18 @@ class MemoryStore:
             )
             conn.execute(
                 """
+                CREATE TABLE IF NOT EXISTS repair_runs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    repair_name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    should_retry INTEGER NOT NULL,
+                    repair_json TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS feedback_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     kind TEXT NOT NULL,
@@ -66,6 +78,16 @@ class MemoryStore:
             conn.execute(
                 "INSERT INTO feedback_events(kind, name, status, feedback_json) VALUES (?, ?, ?, ?)",
                 (feedback.kind, feedback.name, feedback.status, payload),
+            )
+            conn.commit()
+
+    def record_repair(self, feedback: RunFeedback, should_retry: bool) -> None:
+        self.record_feedback(feedback)
+        category = str((feedback.metadata or {}).get("category", "unknown"))
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT INTO repair_runs(repair_name, category, should_retry, repair_json) VALUES (?, ?, ?, ?)",
+                (feedback.name, category, int(should_retry), feedback.as_json()),
             )
             conn.commit()
 
