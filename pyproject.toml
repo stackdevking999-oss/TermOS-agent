@@ -8,3 +8,9 @@ version = "0.1.0"
 description = "Environment-aware Android/Termux agentic system"
 readme = "README.md"
 requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["termos_agent", "termos_agent.api", "termos_agent.core", "termos_agent.environment", "termos_agent.skills", "termos_agent.storage", "termos_agent.testing"]
+
+[project.scripts]
+termos-agent = "termos_agent.cli:main"
