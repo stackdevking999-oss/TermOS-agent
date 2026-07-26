@@ -17,3 +17,11 @@ def run_task():
     task = payload.get("task", "")
     result = Orchestrator().handle(task)
     return jsonify({"success": result.success, "message": result.message, "data": result.data})
+
+
+@api_bp.post("/test")
+def run_test():
+    payload = request.get_json(force=True, silent=True) or {}
+    manifest_path = payload.get("manifest_path", "")
+    result = Orchestrator().run_test_manifest(manifest_path)
+    return jsonify({"success": result.success, "message": result.message, "data": result.data})
