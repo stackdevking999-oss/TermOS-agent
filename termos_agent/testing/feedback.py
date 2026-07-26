@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
+from termos_agent.core.feedback import RunFeedback
+
 
 @dataclass
 class TestFeedback:
@@ -28,3 +30,19 @@ class TestFeedback:
             "artifacts": self.artifacts,
             "notes": self.notes,
         }
+
+    def to_run_feedback(self) -> RunFeedback:
+        return RunFeedback(
+            kind="test",
+            name=self.test_name,
+            status=self.status,
+            environment=self.environment,
+            command=self.command,
+            stdout=self.stdout,
+            stderr=self.stderr,
+            exit_code=self.exit_code,
+            runtime_seconds=self.runtime_seconds,
+            artifacts=self.artifacts,
+            notes=self.notes,
+            metadata={},
+        )
