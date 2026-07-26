@@ -1,0 +1,12 @@
+{
+  "name": "smoke",
+  "description": "Simple health-oriented smoke test",
+  "environment": {},
+  "steps": [
+    {
+      "command": ["python3", "-c", "print('smoke-ok')"],
+      "expect_exit_code": 0,
+      "expect_files": []
+    }
+  ]
+}
