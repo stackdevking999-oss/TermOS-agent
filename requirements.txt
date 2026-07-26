@@ -3,3 +3,4 @@ requests
 pydantic
 rich
 pytest
+flask
