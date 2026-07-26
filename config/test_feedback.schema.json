@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackdevking999-oss.github.io/TermOS-agent/config/test_feedback.schema.json",
+  "title": "TermOS agent Test Feedback",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "test_name",
+    "status",
+    "environment",
+    "command",
+    "stdout",
+    "stderr",
+    "exit_code",
+    "runtime_seconds",
+    "artifacts",
+    "notes"
+  ],
+  "properties": {
+    "test_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["passed", "failed", "warning", "skipped"]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stdout": {
+      "type": "string"
+    },
+    "stderr": {
+      "type": "string"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "runtime_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}
