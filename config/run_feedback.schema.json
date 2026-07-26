@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackdevking999-oss.github.io/TermOS-agent/config/run_feedback.schema.json",
+  "title": "TermOS agent Run Feedback",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "name",
+    "status",
+    "environment",
+    "command",
+    "stdout",
+    "stderr",
+    "exit_code",
+    "runtime_seconds",
+    "artifacts",
+    "notes",
+    "metadata"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["environment", "task", "test", "repair", "release"]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stdout": {
+      "type": "string"
+    },
+    "stderr": {
+      "type": "string"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "runtime_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}
